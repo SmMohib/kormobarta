@@ -1,9 +1,10 @@
- import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:kormobarta/screen/job/detail.dart';
 import 'package:kormobarta/utility/colors.dart';
 import 'package:kormobarta/widget/text.dart';
+import '../../model/data_model.dart';
 
-import '../model/data_model.dart';
 class JobListingScreen extends StatefulWidget {
   @override
   _JobListingScreenState createState() => _JobListingScreenState();
@@ -18,10 +19,11 @@ class _JobListingScreenState extends State<JobListingScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar:AppBar(
-      centerTitle: true,
-      backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: textRoboro(text: 'Kormo Barta', color: blackColor, isTile: true, fontSize: 20)),
+      appBar: AppBar(
+        centerTitle: true,
+        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        title: textRoboro(text: 'Kormo Barta', color: blackColor, isTile: true, fontSize: 20),
+      ),
       body: FutureBuilder<List<JobPosting>>(
         future: _fetchJobPostings(),
         builder: (context, snapshot) {
@@ -39,12 +41,19 @@ class _JobListingScreenState extends State<JobListingScreen> {
                 return Column(
                   children: [
                     ListTile(
+                      leading: Image.network(jobPosting.imageUrl),
                       title: Text(jobPosting.title),
-                      subtitle: Text(jobPosting.description),
+                      subtitle: Text(jobPosting.description, maxLines: 2),
                       onTap: () {
-                        // Handle job posting tap if needed
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => DetailScreen(jobPosting: jobPosting),
+                          ),
+                        );
                       },
-                    ),const Divider()
+                    ),
+                    const Divider()
                   ],
                 );
               },
@@ -55,4 +64,3 @@ class _JobListingScreenState extends State<JobListingScreen> {
     );
   }
 }
-

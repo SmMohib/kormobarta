@@ -46,7 +46,8 @@ class JobPosting {
       'startDate': startDate,
       'endDate': endDate,
       'imageUrl': imageUrl,
-      'timestamp': timestamp,
+      'timestamp': FieldValue.serverTimestamp(), // Automatically generates server timestamp
     };
   }
 }
+

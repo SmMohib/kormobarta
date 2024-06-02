@@ -3,6 +3,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+import 'dart:typed_data';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/services.dart';
+import 'package:kormobarta/model/data_model.dart';
 
 class JobPostingScreen extends StatefulWidget {
   @override
@@ -10,31 +14,49 @@ class JobPostingScreen extends StatefulWidget {
 }
 
 class _JobPostingScreenState extends State<JobPostingScreen> {
-  TextEditingController _titleController = TextEditingController();
-  TextEditingController _descriptionController = TextEditingController();
-  TextEditingController _locationController = TextEditingController();
-  TextEditingController _websiteController = TextEditingController();
-  TextEditingController _startDateController = TextEditingController();
-  TextEditingController _endDateController = TextEditingController();
-  String _imagePath = '';
+  final TextEditingController _titleController = TextEditingController();
+  final TextEditingController _descriptionController = TextEditingController();
+  final TextEditingController _locationController = TextEditingController();
+  final TextEditingController _websiteController = TextEditingController();
+  final TextEditingController _startDateController = TextEditingController();
+  final TextEditingController _endDateController = TextEditingController();
   String _imageUrl = '';
+  String _imagePath = '';
+  Uint8List? _webImage;
 
   Future<void> _getImage() async {
     final picker = ImagePicker();
-    final pickedImage = await picker.pickImage(source: ImageSource.gallery);
-    setState(() {
+    if (kIsWeb) {
+      final XFile? pickedImage = await picker.pickImage(source: ImageSource.gallery);
       if (pickedImage != null) {
-        _imagePath = pickedImage.path;
+        final bytes = await pickedImage.readAsBytes();
+        setState(() {
+          _webImage = bytes;
+        });
       }
-    });
+    } else {
+      final XFile? pickedImage = await picker.pickImage(source: ImageSource.gallery);
+      setState(() {
+        if (pickedImage != null) {
+          _imagePath = pickedImage.path;
+        }
+      });
+    }
   }
 
   Future<void> _uploadImageToStorage() async {
-    if (_imagePath.isNotEmpty) {
+    if (_imagePath.isNotEmpty || _webImage != null) {
       final storageRef = FirebaseStorage.instance
           .ref()
           .child('job_images/${DateTime.now().millisecondsSinceEpoch}');
-      final uploadTask = storageRef.putFile(File(_imagePath));
+      UploadTask uploadTask;
+
+      if (kIsWeb && _webImage != null) {
+        uploadTask = storageRef.putData(_webImage!);
+      } else {
+        uploadTask = storageRef.putFile(File(_imagePath));
+      }
+
       await uploadTask.whenComplete(() async {
         _imageUrl = await storageRef.getDownloadURL();
         print('Image uploaded successfully: $_imageUrl');
@@ -43,25 +65,31 @@ class _JobPostingScreenState extends State<JobPostingScreen> {
   }
 
   Future<void> _postJob() async {
-    if (_imagePath.isNotEmpty) {
-      await _uploadImageToStorage();
-    }
-
     try {
-      await FirebaseFirestore.instance.collection('job_postings').add({
-        'title': _titleController.text,
-        'description': _descriptionController.text,
-        'location': _locationController.text,
-        'website': _websiteController.text,
-        'startDate': _startDateController.text,
-        'endDate': _endDateController.text,
-        'imageUrl': _imageUrl,
-        'timestamp': DateTime.now(),
-      });
+      if (_imagePath.isNotEmpty || _webImage != null) {
+        await _uploadImageToStorage();
+      }
+
+      final jobPosting = JobPosting(
+        id: '', // Firestore will generate a unique ID
+        title: _titleController.text,
+        description: _descriptionController.text,
+        location: _locationController.text,
+        website: _websiteController.text,
+        startDate: _startDateController.text,
+        endDate: _endDateController.text,
+        imageUrl: _imageUrl,
+        timestamp: DateTime.now(), // Local timestamp for reference
+      );
+
+      await FirebaseFirestore.instance.collection('job_postings').add(
+        jobPosting.toMap(),
+      );
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Job posting created successfully!')),
       );
-      // Clear the form fields after successful submission
+
       _titleController.clear();
       _descriptionController.clear();
       _locationController.clear();
@@ -70,6 +98,7 @@ class _JobPostingScreenState extends State<JobPostingScreen> {
       _endDateController.clear();
       setState(() {
         _imagePath = '';
+        _webImage = null;
         _imageUrl = '';
       });
     } catch (e) {
@@ -90,9 +119,23 @@ class _JobPostingScreenState extends State<JobPostingScreen> {
         padding: const EdgeInsets.all(16.0),
         child: ListView(
           children: [
-            if (_imagePath.isNotEmpty)
-              Image.file(
-                File(_imagePath),
+            if (_imagePath.isNotEmpty || _webImage != null)
+              kIsWeb && _webImage != null
+                  ? Image.memory(
+                      _webImage!,
+                      height: 200,
+                      width: 200,
+                      fit: BoxFit.cover,
+                    )
+                  : Image.file(
+                      File(_imagePath),
+                      height: 200,
+                      width: 200,
+                      fit: BoxFit.cover,
+                    )
+            else
+              Image.asset(
+                'assets/logo.png', // Replace with your demo image URL
                 height: 200,
                 width: 200,
                 fit: BoxFit.cover,

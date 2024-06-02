@@ -1,10 +1,15 @@
 // ignore_for_file: prefer_const_literals_to_create_immutables
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:kormobarta/screen/fetch_data.dart';
+import 'package:kormobarta/provider/user_provider.dart';
+import 'package:kormobarta/screen/auth/login_screen.dart';
+import 'package:kormobarta/screen/job/fetch_data.dart';
 import 'package:kormobarta/screen/home.dart';
-import 'package:kormobarta/screen/profile.dart';
+import 'package:kormobarta/screen/auth/profile.dart';
+import 'package:kormobarta/screen/searchScreen.dart';
 import 'package:kormobarta/utility/colors.dart';
+import 'package:provider/provider.dart';
 
 
 class BottomNev extends StatefulWidget {
@@ -16,7 +21,11 @@ class BottomNev extends StatefulWidget {
 
 class _BottomNevState extends State<BottomNev> {
  int current_index = 0;
-  final List<Widget> pages = [Home(), Center(child: const Text('Search')), Profile()];
+  final List<Widget> pages = [
+    JobListingScreen(), 
+    SearchScreen(), 
+    AuthCheck(),
+  ];
   void OnTapped(int index) {
     setState(() {
       current_index = index;
@@ -28,9 +37,9 @@ class _BottomNevState extends State<BottomNev> {
     return Scaffold(
       body: pages[current_index],
       bottomNavigationBar: BottomNavigationBar(
-          backgroundColor:primaryColor,
+          backgroundColor: Theme.of(context).primaryColor,
           iconSize: 26,
-          selectedItemColor: Colors.blue,
+          selectedItemColor: const Color.fromARGB(255, 9, 17, 23),
           unselectedItemColor: Colors.white,
           currentIndex: current_index,
           selectedFontSize: 20,
@@ -46,6 +55,22 @@ class _BottomNevState extends State<BottomNev> {
                 label: "Profile",
                 tooltip: "Profile"),
           ]),
+    );
+  }
+
+}
+
+class AuthCheck extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<UserProvider>(
+      builder: (context, userProvider, _) {
+        if (userProvider.user != null) {
+          return Profile();
+        } else {
+          return LoginScreen();
+        }
+      },
     );
   }
 }
